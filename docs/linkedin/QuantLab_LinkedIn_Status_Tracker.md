@@ -90,9 +90,9 @@ Potential later indicators:
 - [ ] Covariance
 
 ### Phase 3 — Strategy Engine
-- [ ] Strategy abstraction
-- [ ] BUY/SELL/HOLD signals
-- [ ] Moving-average crossover
+- [ ] Strategy abstraction — deliberately deferred until a second strategy exists to compare against (avoids guessing at a shared interface prematurely)
+- [x] BUY/SELL/HOLD signals — crossover-event detection (not continuous-state), verified against hand-traced examples
+- [x] Moving-average crossover — implemented, tested (BUY/SELL fire once at the actual crossing bar, insufficient-history and exact-equality edge cases both verified)
 - [ ] Mean reversion
 - [ ] Momentum
 - [ ] Pairs trading
@@ -164,12 +164,12 @@ Target approximately **2–3 meaningful posts per week** during active developme
 
 | Priority | Post | Trigger | Status |
 |---|---|---|---|
-| 1 | Market Data Pipeline | Phase 1 complete | READY |
-| 2 | SMA from Scratch | SMA complete + tested | READY |
-| 3 | SMA vs EMA | EMA complete + tested | READY |
-| 4 | Returns + Volatility | Both complete | READY |
-| 5 | Correlation + Z-score | Both complete | READY |
-| 6 | Strategy Engine | First strategy works | WAITING |
+| 1 | Market Data Pipeline | Phase 1 complete | POSTED |
+| 2 | SMA from Scratch | SMA complete + tested | POSTED |
+| 3 | SMA vs EMA | EMA complete + tested | CONSOLIDATED — see note |
+| 4 | Returns + Volatility | Both complete | CONSOLIDATED — see note |
+| 5 | Correlation + Z-score | Both complete | CONSOLIDATED — see note |
+| 6 | Strategy Engine | First strategy works | READY |
 | 7 | Backtesting Engine | First backtest works | WAITING |
 | 8 | Look-Ahead Bias | Execution model implemented | WAITING |
 | 9 | Transaction Costs / Slippage | Costs implemented | WAITING |
@@ -182,7 +182,7 @@ Target approximately **2–3 meaningful posts per week** during active developme
 # Post Specifications
 
 ## Post 1 — Market Data Pipeline
-**Status: READY**
+**Status: POSTED**
 
 Angle: "How I built the market-data layer for QuantLab."
 
@@ -198,7 +198,7 @@ Strong hook:
 > Before writing a trading strategy, I wanted to make sure I could trust the data feeding it.
 
 ## Post 2 — SMA from Scratch
-**Status: READY** — SMA implementation and tests complete.
+**Status: POSTED** — SMA implementation and tests complete.
 
 Cover:
 - rolling window
@@ -332,43 +332,45 @@ Capture:
 # Concurrent Status
 
 ## Current Phase
-`Phase 3 — Strategy Engine` (Phase 2 complete)
+`Phase 3 — Strategy Engine` (Phase 2 complete; moving-average crossover done)
 
 ## Completed
 - [x] SMA — implemented, verified against the documented example, passing pytest tests
 - [x] EMA — implemented, verified against hand-computed values, passing pytest tests (includes a real caught-and-fixed bug)
 - [x] Returns, rolling volatility, rolling std, rolling correlation, rolling z-score — all implemented, verified against hand-computed values, passing pytest tests
 - [x] Phase 2 entirely complete: 12 indicator tests, 37 tests passing project-wide
+- [x] Moving-average crossover strategy — implemented, tested (6 tests): fires BUY/SELL exactly once at the actual crossing bar rather than continuously, correctly holds through insufficient history and exact-equality edge cases, preserves the original price index, no look-ahead
+- [x] 43 tests passing project-wide
 
 ## In Progress
-- [ ] Nothing yet started on Phase 3
+- [ ] Nothing yet started beyond the first strategy
 
 ## Next
-- [ ] Strategy abstraction (interface/base class for a strategy)
-- [ ] BUY/SELL/HOLD signal generation
-- [ ] Moving-average crossover strategy (short/long SMA cross)
-- [ ] Capture evidence for Posts 2–5 (see below), draft and post them
+- [ ] Decide whether to add mean reversion / momentum next, or move straight to Phase 4 (backtesting) — README's v0.1 Definition of Done only requires the crossover strategy, so this is optional scope
+- [ ] Capture evidence for Post #6 (see below), draft and post it
+- [ ] Post the consolidated Phase 2 wrap post (was #3/#4/#5, see note below) — drafted, not yet posted
 
 ## LinkedIn Opportunity
-**Post:** #2 "SMA from Scratch", #3 "SMA vs EMA", #4 "Returns + Volatility", and #5 "Correlation + Z-score" — all READY now.
+**Post:** #6 "Strategy Engine" is now READY — first strategy works and is tested.
 
-**Why it matters:** The entire indicator layer is done and tested. The EMA bug (a wrong-but-plausible silent miscalculation caught only through hand-verification, not by anything erroring out) is a genuinely strong engineering-judgment story — more credible than a clean success. Posts 4/5 demonstrate the same verification discipline applied consistently, not as a one-off.
+**Note on #3/#4/#5:** these were consolidated into a single "Phase 2 wrap" post (EMA bug story, verification discipline across returns/correlation/z-score, and the `rolling_std` naming fix) instead of three separate posts, to avoid over-posting the same general topic back to back. That combined post is drafted and ready but not yet posted — post it before #6 so the chronology (indicators → strategy) reads naturally.
+
+**Why #6 matters:** it's the first time indicators turn into an actual decision (BUY/SELL/HOLD), and the "detect the crossing bar, not the ongoing state" bug is a strong, concrete story — a `~positive` vs `not positive` typo that silently fired BUY on every bar instead of once, caught only by hand-tracing the expected output first.
 
 **Capture:**
-- Screenshot of `pytest tests/python/test_indicators.py -v` showing all 12 tests passing, and `pytest tests/python/ -v` showing all 37 project-wide
-- The SMA/EMA formulas alongside the actual code (`quant/indicators.py`)
-- A short before/after snippet of the EMA bug: `ewm(span, adjust=False)` (wrong) vs `ewm(span=span, adjust=False)` (correct), with the differing output values
-- For Post 5: the `rolling_std` extraction — worth mentioning that `rolling_volatility` and `rolling_zscore` share one honestly-named primitive instead of duplicating `.rolling(window).std()` or reusing a mismatched name
-- Optional: a small matplotlib chart of SMA and EMA plotted over the sample price series, to make the "equal weight vs recent-weighted" distinction visually obvious
+- Screenshot of `pytest tests/python/test_indicators.py -v` (12 passing) and `pytest tests/python/ -v` (43 passing project-wide)
+- The `~positive` (wrong) vs `not positive` (correct) line, plus the before/after signal output showing repeated `BUY` vs a single correct one
+- The small price-series table (price / short_sma / long_sma / diff / signal) that made the crossing bar visually obvious
+- The SMA/EMA formulas alongside the actual code (`quant/indicators.py`), still usable if posting the consolidated Phase 2 wrap first
 
-**Status:** Draft / Ready / Posted → currently **Ready to draft**, none posted yet.
+**Status:** Posts #1 and #2 **posted**. Phase 2 wrap (former #3/#4/#5) and #6 both **ready to draft/post**, not yet posted — space them roughly 2-3/week.
 
 ## Next Post
-Once the first strategy (moving-average crossover) is implemented and tested, Post #6 becomes ready.
+Once Phase 4 (backtesting) produces a first working backtest, Post #7 becomes ready.
 
 # Current Next Action
 
-Build **Phase 3 — Strategy Engine**: a strategy abstraction, BUY/SELL/HOLD signal generation, and the moving-average crossover strategy from `docs/QUANT_ENGINE.md` (short_window=20, long_window=50 by default; short MA crosses above long MA → BUY, crosses below → SELL, otherwise HOLD).
+Decide next: add mean reversion/momentum to Phase 3 (optional, not required for v0.1), or move to **Phase 4 — Backtesting** (cash accounting, positions, simulated execution, commission/slippage, equity curve, look-ahead protection) per `docs/QUANT_ENGINE.md` and `docs/ROADMAP.md`. The `README.md` v0.1 Definition of Done only requires the crossover strategy, so backtesting is the more direct path to a complete end-to-end system.
 
 When each piece is complete:
 1. Verify against a hand-computed or clearly reasoned example before trusting the output (not just "it ran").
