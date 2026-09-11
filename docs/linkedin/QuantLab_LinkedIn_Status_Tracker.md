@@ -97,17 +97,19 @@ Potential later indicators:
 - [ ] Momentum
 - [ ] Pairs trading
 
-### Phase 4 — Backtesting
-- [ ] Initial capital
-- [ ] Cash accounting
-- [ ] Positions
-- [ ] Orders
-- [ ] Simulated execution
-- [ ] Commission
-- [ ] Slippage
-- [ ] Equity curve
-- [ ] Trade history
-- [ ] Look-ahead-bias protection
+### Phase 4 — Backtesting — COMPLETE
+- [x] Initial capital
+- [x] Cash accounting
+- [x] Positions
+- [x] Orders (all-in/all-out sizing, documented assumption)
+- [x] Simulated execution — signal at bar T, executes at bar T+1's open
+- [x] Commission — per-share rate + minimum (IBKR-style), reserved before position sizing so it can't drive cash negative
+- [x] Slippage — buy price × (1 + slippage), sell price × (1 - slippage)
+- [x] Equity curve — verified not to leak a signaled-but-not-yet-executed trade into the signal bar's own mark-to-market
+- [x] Trade history — timestamp/side/quantity/execution_price/commission/slippage, verified against hand-traced examples
+- [x] Look-ahead-bias protection
+
+v1 backtester complete and tested (12 backtester tests, 55 passing project-wide). Several real bugs caught during development, all via hand-verification rather than anything erroring out: a bitwise `~positive` vs `not positive` typo in the strategy layer that silently fired BUY on every bar instead of once; an equity-curve timing leak where a signaled-but-not-yet-executed trade's effect showed up one bar too early; a regression back to executing at bar close instead of bar open when commission/slippage were added; a commission parameter that looked configurable but was silently ignored (hardcoded values used instead); and commission being able to drive cash negative because position sizing didn't reserve for it up front.
 
 ### Phase 5 — Risk
 - [ ] Total return
@@ -170,9 +172,9 @@ Target approximately **2–3 meaningful posts per week** during active developme
 | 4 | Returns + Volatility | Both complete | CONSOLIDATED — see note |
 | 5 | Correlation + Z-score | Both complete | CONSOLIDATED — see note |
 | 6 | Strategy Engine | First strategy works | READY |
-| 7 | Backtesting Engine | First backtest works | WAITING |
-| 8 | Look-Ahead Bias | Execution model implemented | WAITING |
-| 9 | Transaction Costs / Slippage | Costs implemented | WAITING |
+| 7 | Backtesting Engine | First backtest works | READY |
+| 8 | Look-Ahead Bias | Execution model implemented | READY |
+| 9 | Transaction Costs / Slippage | Costs implemented | READY |
 | 10 | Risk Metrics | Risk engine begins | WAITING |
 | 11 | Full Architecture | Major components integrated | WAITING |
 | 12 | Dashboard | Dashboard works | WAITING |
