@@ -121,13 +121,17 @@ v1 backtester complete and tested (12 backtester tests, 55 passing project-wide)
 - [ ] VaR
 - [ ] CVaR
 
-### Phase 6 — API
-- [ ] Assets endpoints
+### Phase 6 — API — IN PROGRESS
+- [x] Assets endpoints — GET /api/assets, GET /api/assets/{id} (404 when missing), full stack verified live against real Postgres data (not just tests in isolation)
 - [ ] Price endpoints
 - [ ] Strategy endpoints
-- [ ] Backtest endpoints
+- [ ] Backtest endpoints (blocked on a real design decision: no `backtests`/`trades` schema exists yet, and nothing persists a Python-computed backtest result to Postgres)
 - [ ] Results endpoints
-- [ ] Swagger/OpenAPI
+- [x] Swagger/OpenAPI — auto-generated, picks up new routes automatically
+
+Built test-first (TDD): wrote failing xUnit tests for each layer (AssetDto → IAssetRepository/AssetRepository via Dapper → AssetService → AssetsController) before any implementation existed, then implemented against them. Real repository-layer tests hit the live Postgres container directly, seeding and cleaning up their own test data rather than mocking the database — caught a genuine Dapper gotcha this way (a `asset_name` DB column doesn't auto-map to a `Name` DTO property; needs an explicit SQL alias, or it silently leaves the property null instead of erroring).
+
+Chose Dapper over EF Core deliberately: consistent with keeping the schema itself ORM-agnostic (raw SQL migrations, since Python also writes to the same tables), and more aligned with the explicit-control-over-SQL expectations common at quant/trading shops versus a typical enterprise line-of-business app.
 
 ### Phase 7 — Dashboard
 - [ ] Portfolio/equity chart
@@ -180,6 +184,7 @@ Target approximately **2–3 meaningful posts per week** during active developme
 | 12 | Dashboard | Dashboard works | WAITING |
 | 13 | Performance Engineering | Real benchmark exists | WAITING |
 | 14 | C++ Benchmark | C++ implementation complete | FUTURE |
+| 15 | Backend/API (Dapper + TDD) | Assets endpoints working end-to-end | POSTED |
 
 # Post Specifications
 
