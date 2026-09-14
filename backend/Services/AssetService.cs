@@ -22,4 +22,9 @@ public class AssetService
     {
         return await _assetRepository.GetByIdAsync(Id);
     }
+
+    public async Task<IEnumerable<PriceBarDto>> GetPricesAsync(long assetId, DateTime? from, DateTime? to, int? limit)
+    {
+        return await _assetRepository.GetPricesAsync(assetId, from, to, limit);
+    }
 }

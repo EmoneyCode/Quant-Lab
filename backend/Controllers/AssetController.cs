@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using QuantLab.Api;
+using QuantLab.Api.Data;
 using QuantLab.Api.Dtos;
 using QuantLab.Api.Services;
 namespace QuantLab.Api.Controllers;
@@ -32,6 +33,20 @@ public class AssetsController : ControllerBase
             return NotFound();
         }
         return Ok(asset);
+    }
+
+    [HttpGet("{id}/prices")]
+    public async Task<ActionResult<IEnumerable<PriceBarDto>>> GetPrices(long id, DateTime? from, DateTime? to, int? limit)
+    {
+        var asset = await _assetService.GetAssetAsync(id);
+        if (asset == null)
+        {
+            return NotFound();
+        }
+
+        var priceBar = await _assetService.GetPricesAsync(id, from, to, limit);
+
+        return Ok(priceBar);
     }
 
 

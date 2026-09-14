@@ -123,13 +123,19 @@ v1 backtester complete and tested (12 backtester tests, 55 passing project-wide)
 
 ### Phase 6 — API — IN PROGRESS
 - [x] Assets endpoints — GET /api/assets, GET /api/assets/{id} (404 when missing), full stack verified live against real Postgres data (not just tests in isolation)
-- [ ] Price endpoints
+- [x] Price endpoints — GET /api/assets/{id}/prices with from/to/limit filtering, 404 correctly distinguished from "asset exists but has no prices" (200 + empty list), verified live against real data (7 real price bars, correct ascending order, correct limit behavior)
 - [ ] Strategy endpoints
 - [ ] Backtest endpoints (blocked on a real design decision: no `backtests`/`trades` schema exists yet, and nothing persists a Python-computed backtest result to Postgres)
 - [ ] Results endpoints
 - [x] Swagger/OpenAPI — auto-generated, picks up new routes automatically
 
-Built test-first (TDD): wrote failing xUnit tests for each layer (AssetDto → IAssetRepository/AssetRepository via Dapper → AssetService → AssetsController) before any implementation existed, then implemented against them. Real repository-layer tests hit the live Postgres container directly, seeding and cleaning up their own test data rather than mocking the database — caught a genuine Dapper gotcha this way (a `asset_name` DB column doesn't auto-map to a `Name` DTO property; needs an explicit SQL alias, or it silently leaves the property null instead of erroring).
+Built test-first (TDD): wrote failing xUnit tests for each layer (DTOs → IAssetRepository/AssetRepository via Dapper → AssetService → AssetsController) before any implementation existed, then implemented against them. 17 passing C# tests. Real repository-layer tests hit the live Postgres container directly, seeding and cleaning up their own test data rather than mocking the database.
+
+Several real, non-obvious bugs caught building the Prices endpoint, all via hand-verification or live testing rather than the unit tests alone:
+- A Dapper column-mapping gotcha (`asset_name` doesn't auto-map to a `Name` DTO property; needs an explicit SQL alias, or it silently leaves the property null instead of erroring)
+- Postgres couldn't infer the type of a nullable filter parameter (`could not determine data type of parameter`) unless every textual occurrence was explicitly cast, not just one
+- A DB-column-vs-DTO type mismatch (`numeric` column vs `int` property) that only a real Postgres round-trip could catch — the in-memory fake repository could never have caught it
+- The subtlest one: the route template used `{id}` but the action parameter was named `assetId` — ASP.NET Core binds route values by name, so the mismatch silently left the parameter at its default value instead of erroring. Every request "worked" in the sense of returning *a* response, and the not-found test even passed, but only because every asset ID coincidentally produced the same wrong answer. Only caught by testing against a real asset that actually had data.
 
 Chose Dapper over EF Core deliberately: consistent with keeping the schema itself ORM-agnostic (raw SQL migrations, since Python also writes to the same tables), and more aligned with the explicit-control-over-SQL expectations common at quant/trading shops versus a typical enterprise line-of-business app.
 
@@ -185,6 +191,7 @@ Target approximately **2–3 meaningful posts per week** during active developme
 | 13 | Performance Engineering | Real benchmark exists | WAITING |
 | 14 | C++ Benchmark | C++ implementation complete | FUTURE |
 | 15 | Backend/API (Dapper + TDD) | Assets endpoints working end-to-end | POSTED |
+| 16 | The bug that passed its own test (route param naming) | Prices endpoint working end-to-end | READY |
 
 # Post Specifications
 
