@@ -1,6 +1,6 @@
 CREATE TABLE equity_curves(
     id BIGINT generated always as identity PRIMARY KEY,
-    backtest_id BIGINT NOT NULL REFERENCES backtests(id),
+    backtest_id BIGINT NOT NULL REFERENCES backtests(id) ON DELETE CASCADE,
     timestamp TIMESTAMPTZ NOT NULL,
     equity NUMERIC(19,2) NOT NULL,
 
