@@ -191,7 +191,7 @@ Target approximately **2–3 meaningful posts per week** during active developme
 | 13 | Performance Engineering | Real benchmark exists | WAITING |
 | 14 | C++ Benchmark | C++ implementation complete | FUTURE |
 | 15 | Backend/API (Dapper + TDD) | Assets endpoints working end-to-end | POSTED |
-| 16 | The bug that passed its own test (route param naming) | Prices endpoint working end-to-end | READY |
+| 16 | The bug that passed its own test (route param naming) | Prices endpoint working end-to-end | POSTED |
 
 # Post Specifications
 
@@ -377,7 +377,7 @@ Capture:
 - The small price-series table (price / short_sma / long_sma / diff / signal) that made the crossing bar visually obvious
 - The SMA/EMA formulas alongside the actual code (`quant/indicators.py`), still usable if posting the consolidated Phase 2 wrap first
 
-**Status:** Posts #1 and #2 **posted**. Phase 2 wrap (former #3/#4/#5) and #6 both **ready to draft/post**, not yet posted — space them roughly 2-3/week.
+**Status:** Posts #1, #2, #15, and #16 **posted**. Phase 2 wrap (former #3/#4/#5), #6 (Strategy Engine), #7 (Backtesting Engine), #8 (Look-Ahead Bias), and #9 (Transaction Costs/Slippage) all **ready to draft/post**, not yet posted — space them roughly 2-3/week rather than batching.
 
 ## Next Post
 Once Phase 4 (backtesting) produces a first working backtest, Post #7 becomes ready.
