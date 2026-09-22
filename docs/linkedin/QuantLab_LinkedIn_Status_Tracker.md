@@ -125,7 +125,7 @@ v1 backtester complete and tested (12 backtester tests, 55 passing project-wide)
 - [x] Assets endpoints — GET /api/assets, GET /api/assets/{id} (404 when missing), full stack verified live against real Postgres data (not just tests in isolation)
 - [x] Price endpoints — GET /api/assets/{id}/prices with from/to/limit filtering, 404 correctly distinguished from "asset exists but has no prices" (200 + empty list), verified live against real data (7 real price bars, correct ascending order, correct limit behavior)
 - [ ] Strategy endpoints
-- [ ] Backtest endpoints (blocked on a real design decision: no `backtests`/`trades` schema exists yet, and nothing persists a Python-computed backtest result to Postgres)
+- [ ] Backtest endpoints (no longer blocked — schema exists and `quant/persistence.py::save_backtest()` now writes real backtest results to `backtests`/`trades`/`equity_curves`; only the C# read-only GET endpoints remain)
 - [ ] Results endpoints
 - [x] Swagger/OpenAPI — auto-generated, picks up new routes automatically
 
@@ -192,6 +192,7 @@ Target approximately **2–3 meaningful posts per week** during active developme
 | 14 | C++ Benchmark | C++ implementation complete | FUTURE |
 | 15 | Backend/API (Dapper + TDD) | Assets endpoints working end-to-end | POSTED |
 | 16 | The bug that passed its own test (route param naming) | Prices endpoint working end-to-end | POSTED |
+| 17 | Backtest Persistence — writing results to Postgres | Python write path complete + tested | POSTED |
 
 # Post Specifications
 
@@ -303,6 +304,20 @@ Use real before/after measurements such as runtime, memory, query performance, o
 **Trigger:** C++ implementation complete.
 
 Compare Python vs C++ on a defined dataset and methodology. Discuss tradeoffs, not just speed.
+
+## Post 17 — Backtest Persistence
+**Status: POSTED** — `quant/persistence.py::save_backtest()` complete and tested (6 new tests, 61 passing project-wide), verified against the live Postgres container including a real cascade-delete check through the new write path.
+
+Angle: making a backtest's results outlive the process that computed them, and why this writer deliberately handles failure the opposite way `importer.py` does.
+
+Cover:
+- The problem: `Backtester.run()` returns an in-memory dict; nothing persisted it until now.
+- The three tables it writes to (`backtests`, `trades`, `equity_curves`) and the FK chain (insert backtest, get its id back, use it for the children).
+- The design decision worth explaining: `importer.py` is deliberately per-row tolerant (skip a bad/duplicate price bar, keep importing) because a CSV import is a pile of independent rows. This writer is the opposite on purpose — one atomic transaction — because a backtest is one unit, and a partially-written one (say, a truncated equity curve) is worse than none at all since it would silently corrupt downstream risk metrics.
+- The real bug: a `trade["timestramp"]` typo that would have thrown on the first backtest with a real trade in it. Not caught by reading the code — caught by running the tests against a real Postgres instance.
+- Built test-first: the test file's docstring defined the function contract before any implementation existed, same TDD pattern as the API layer.
+
+Worth including honestly: this was a driver/navigator session — tests and architecture guidance came first, then the implementation was written and debugged interactively against real failures (a missing `RETURNING id`, `VALUE` vs `VALUES`, a dangling comma, the timestamp typo, a Pylance `Optional` warning resolved with a loud guard instead of a silent assumption). Same verification discipline as every other phase of this project, just applied to a new layer.
 
 # What to Capture While Coding
 
