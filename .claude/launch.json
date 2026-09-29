@@ -1,0 +1,19 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "quantlab-api",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "DATABASE_URL=postgresql://quantlab:change_me@localhost:5432/quantlab",
+        "dotnet",
+        "run",
+        "--project",
+        "backend",
+        "--urls",
+        "http://localhost:5274"
+      ],
+      "port": 5274
+    }
+  ]
+}

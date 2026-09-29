@@ -125,17 +125,25 @@ v1 backtester complete and tested (12 backtester tests, 55 passing project-wide)
 - [x] Assets endpoints — GET /api/assets, GET /api/assets/{id} (404 when missing), full stack verified live against real Postgres data (not just tests in isolation)
 - [x] Price endpoints — GET /api/assets/{id}/prices with from/to/limit filtering, 404 correctly distinguished from "asset exists but has no prices" (200 + empty list), verified live against real data (7 real price bars, correct ascending order, correct limit behavior)
 - [ ] Strategy endpoints
-- [ ] Backtest endpoints (no longer blocked — schema exists and `quant/persistence.py::save_backtest()` now writes real backtest results to `backtests`/`trades`/`equity_curves`; only the C# read-only GET endpoints remain)
-- [ ] Results endpoints
+- [x] Backtest endpoints — GET /api/backtests (list), GET /api/backtests/{id} (config + performance metrics + trades + equity curve bundled into one detail response, 404 when missing), full stack verified live against real Postgres data (a real backtest computed by `quant/backtester.py` from real AAPL price bars, persisted via `quant/persistence.py::save_backtest()`, then read back correctly through Dapper → service → controller → HTTP JSON)
+- [x] Results endpoints — not a separate route; trades and the equity curve are bundled directly into the Backtest detail response, per `docs/API.md`'s own spec ("return configuration, performance metrics, trades, and the equity curve")
 - [x] Swagger/OpenAPI — auto-generated, picks up new routes automatically
 
-Built test-first (TDD): wrote failing xUnit tests for each layer (DTOs → IAssetRepository/AssetRepository via Dapper → AssetService → AssetsController) before any implementation existed, then implemented against them. 17 passing C# tests. Real repository-layer tests hit the live Postgres container directly, seeding and cleaning up their own test data rather than mocking the database.
+Built test-first (TDD) for both endpoint groups: wrote failing xUnit tests for each layer (DTOs → repository via Dapper → service → controller) before any implementation existed, then implemented against them. 32 passing C# tests (up from 17). Repository-layer tests hit the live Postgres container directly, seeding and cleaning up their own test data rather than mocking the database.
 
 Several real, non-obvious bugs caught building the Prices endpoint, all via hand-verification or live testing rather than the unit tests alone:
 - A Dapper column-mapping gotcha (`asset_name` doesn't auto-map to a `Name` DTO property; needs an explicit SQL alias, or it silently leaves the property null instead of erroring)
 - Postgres couldn't infer the type of a nullable filter parameter (`could not determine data type of parameter`) unless every textual occurrence was explicitly cast, not just one
 - A DB-column-vs-DTO type mismatch (`numeric` column vs `int` property) that only a real Postgres round-trip could catch — the in-memory fake repository could never have caught it
 - The subtlest one: the route template used `{id}` but the action parameter was named `assetId` — ASP.NET Core binds route values by name, so the mismatch silently left the parameter at its default value instead of erroring. Every request "worked" in the sense of returning *a* response, and the not-found test even passed, but only because every asset ID coincidentally produced the same wrong answer. Only caught by testing against a real asset that actually had data.
+
+More real bugs caught building the Backtest endpoints, a different flavor than the Prices ones above:
+- The same Dapper underscore gotcha as `asset_name`, but worse this time: on `BacktestSummaryDto` almost every column (`asset_id`, `strategy_name`, `start_date`, ...) needed an explicit `AS "PascalCase"` alias, not just one oddly-named column
+- A genuinely non-obvious Dapper-with-records quirk: even with every column correctly aliased, materialization still failed until the SQL's column order matched the record's declared constructor parameter order exactly — matching names alone wasn't enough, an ordering requirement that doesn't exist for the plain-class-with-settable-properties style `AssetDto` uses
+- The same DB-column-vs-DTO type mismatch as before, same root cause, different table (`numeric` `quantity` column vs an `int` property on `TradeDto`)
+- A classic missing-`await`: a null-check compared an un-awaited `Task<T>` to `null` instead of the value inside it, so the check could structurally never fire — the backtest-not-found branch was silently unreachable
+- Missing `ORDER BY` clauses meant trades/equity-curve rows came back in whatever order Postgres felt like, not chronological order, until a test that deliberately seeded rows out of order caught it
+- A naming choice (`Execution_price` instead of `ExecutionPrice` on `TradeDto`) turned out not to be cosmetic — it leaks straight into the live JSON response as `execution_price`, the one inconsistently-cased field next to `assetId`/`strategyName`/etc., only visible once the endpoint was actually hit live rather than just asserted against in a test
 
 Chose Dapper over EF Core deliberately: consistent with keeping the schema itself ORM-agnostic (raw SQL migrations, since Python also writes to the same tables), and more aligned with the explicit-control-over-SQL expectations common at quant/trading shops versus a typical enterprise line-of-business app.
 
@@ -193,6 +201,7 @@ Target approximately **2–3 meaningful posts per week** during active developme
 | 15 | Backend/API (Dapper + TDD) | Assets endpoints working end-to-end | POSTED |
 | 16 | The bug that passed its own test (route param naming) | Prices endpoint working end-to-end | POSTED |
 | 17 | Backtest Persistence — writing results to Postgres | Python write path complete + tested | POSTED |
+| 18 | Backtest API Endpoints — reusing the layered pattern | Backtest GET endpoints complete + tested live | READY |
 
 # Post Specifications
 
@@ -318,6 +327,19 @@ Cover:
 - Built test-first: the test file's docstring defined the function contract before any implementation existed, same TDD pattern as the API layer.
 
 Worth including honestly: this was a driver/navigator session — tests and architecture guidance came first, then the implementation was written and debugged interactively against real failures (a missing `RETURNING id`, `VALUE` vs `VALUES`, a dangling comma, the timestamp typo, a Pylance `Optional` warning resolved with a loud guard instead of a silent assumption). Same verification discipline as every other phase of this project, just applied to a new layer.
+
+## Post 18 — Backtest API Endpoints
+**Status: READY** — `GET /api/backtests` and `GET /api/backtests/{id}` complete and tested (8 new xUnit tests, 32 passing on the C# side), verified live against a real backtest computed by `quant/backtester.py` and persisted via `quant/persistence.py::save_backtest()`.
+
+Angle: reusing an existing architectural pattern for a second, structurally different resource, plus the two real design/engineering lessons that came out of it.
+
+Cover:
+- The repository -> service -> controller pattern, built once for Assets/Prices, applied again unchanged in shape for Backtests. The payoff of having an architecture instead of one-off endpoints.
+- The API design decision: Prices got their own route (`/api/assets/{id}/prices`), but trades and the equity curve did not get their own routes — they're bundled into the backtest detail response. Reasoning: a price bar is independently meaningful, a trade or equity point never is.
+- What "no ORM" (Dapper over EF Core) actually costs: a database column doesn't become a C# property automatically just because you can guess the translation. Every non-trivial column needed an explicit alias, and the tool failed loudly rather than silently when that wasn't done right.
+- Built test-first again, same discipline as the Assets/Prices work and the Python persistence layer before it.
+
+Worth including honestly, if going deeper than the top-level draft: this was again a driver/navigator session, and debugging it live surfaced a genuinely non-obvious Dapper-with-records quirk (column order has to match the record's constructor parameter order, not just column names), a missing-`await` bug where a null check compared an un-awaited `Task` to `null` and could never fire, and a C# naming choice (`Execution_price` instead of `ExecutionPrice`) that turned out to leak into the live JSON response instead of staying an internal detail.
 
 # What to Capture While Coding
 

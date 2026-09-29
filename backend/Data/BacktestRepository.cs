@@ -42,7 +42,7 @@ public class BacktestRepository : IBacktestRepository
 
     public async Task<IEnumerable<TradeDto>> GetTradesAsync(long backtestId)
     {
-        const string sql = "SELECT timestamp, side, quantity, execution_price, commission, slippage FROM trades WHERE backtest_id = @backtestId ORDER BY timestamp";
+        const string sql = "SELECT timestamp, side, quantity, execution_price AS \"ExecutionPrice\", commission, slippage FROM trades WHERE backtest_id = @backtestId ORDER BY timestamp";
 
         using var connection = new NpgsqlConnection(_connectionString);
 
