@@ -10,7 +10,7 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddSingleton<IAssetRepository>(_ => new AssetRepository(DatabaseConfig.GetConnectionString()));
 builder.Services.AddScoped<AssetService>();
-builder.Services.AddSingleton<IBacktestRepository>(_ => new BacktestRepository(DatabaseConfig.GetConnectionString()));
+builder.Services.AddSingleton<IBacktestRepository>(_ => new CachedBacktestRepository(new BacktestRepository(DatabaseConfig.GetConnectionString())));
 builder.Services.AddScoped<BacktestService>();
 var app = builder.Build();
 
