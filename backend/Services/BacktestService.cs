@@ -24,8 +24,12 @@ public class BacktestService
         {
             return null;
         }
-        IEnumerable<TradeDto> trades = await _backtestRepository.GetTradesAsync(id);
-        IEnumerable<EquityPointDto> equity = await _backtestRepository.GetEquityCurveAsync(id);
+        Task<IEnumerable<TradeDto>> tradesTask = _backtestRepository.GetTradesAsync(id);
+        Task<IEnumerable<EquityPointDto>> equityTask = _backtestRepository.GetEquityCurveAsync(id);
+
+        await Task.WhenAll(tradesTask,equityTask);
+        IEnumerable<TradeDto> trades = await tradesTask;
+        IEnumerable<EquityPointDto> equity = await equityTask;
         return new BacktestDetailDto(summary.Id, summary.AssetId, summary.StrategyName, summary.StartDate, summary.EndDate, summary.InitialCapital, summary.FinalEquity, summary.TotalReturn, trades, equity);
     }
 
